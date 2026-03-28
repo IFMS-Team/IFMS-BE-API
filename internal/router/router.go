@@ -6,7 +6,7 @@ import (
 	"IFMS-BE-API/internal/handler"
 	"IFMS-BE-API/internal/repo"
 	"IFMS-BE-API/internal/service"
-	"IFMS-be/database"
+	"github.com/vippergod12/IFMS-BE/database"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

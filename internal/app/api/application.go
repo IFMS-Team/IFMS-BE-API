@@ -8,8 +8,8 @@ import (
 
 	"IFMS-BE-API/internal/router"
 
-	"IFMS-be/database"
-	redisclient "IFMS-be/redis"
+	"github.com/vippergod12/IFMS-BE/database"
+	redisclient "github.com/vippergod12/IFMS-BE/redis"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

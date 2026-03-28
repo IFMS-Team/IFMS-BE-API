@@ -6,7 +6,7 @@ import (
 
 	"IFMS-BE-API/internal/model"
 	"IFMS-BE-API/internal/repo"
-	db "IFMS-be/sql/generated"
+	db "github.com/vippergod12/IFMS-BE/sql/generated"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

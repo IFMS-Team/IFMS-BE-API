@@ -2,10 +2,11 @@ module IFMS-BE-API
 
 go 1.26.1
 
-replace IFMS-be => ../IFMS-BE
+
+// replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
 
 require (
-	IFMS-be v0.0.0
+	github.com/vippergod12/IFMS-BE v1.0.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
@@ -54,4 +55,4 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 
-replace IFMS-be => ../IFMS-BE
+replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
