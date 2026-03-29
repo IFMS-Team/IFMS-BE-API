@@ -2,15 +2,14 @@ module IFMS-BE-API
 
 go 1.26.1
 
-
 // replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
 
 require (
-	github.com/vippergod12/IFMS-BE v1.0.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/joho/godotenv v1.5.1
+	github.com/vippergod12/IFMS-BE v1.0.2
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.49.0
 )
