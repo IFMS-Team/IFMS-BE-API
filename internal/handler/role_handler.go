@@ -30,8 +30,14 @@ func NewRoleHandler(ctx *app.AppContext) {
 	roles := ctx.Engine.Group("/api/v1/roles")
 	roles.Use(middleware.AuthMiddleware(ctx.KeySecret))
 	{
-		roles.GET("", h.ListRoles)
-		roles.GET("/:id", h.GetRoleWithPermissions)
+		roles.GET("",
+			middleware.RequirePermission(ctx.Queries, "view_roles"),
+			h.ListRoles,
+		)
+		roles.GET("/:id",
+			middleware.RequirePermission(ctx.Queries, "view_roles"),
+			h.GetRoleWithPermissions,
+		)
 		roles.POST("",
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
 			h.CreateRole,
@@ -53,7 +59,10 @@ func NewRoleHandler(ctx *app.AppContext) {
 	perms := ctx.Engine.Group("/api/v1/permissions")
 	perms.Use(middleware.AuthMiddleware(ctx.KeySecret))
 	{
-		perms.GET("", h.ListPermissions)
+		perms.GET("",
+			middleware.RequirePermission(ctx.Queries, "view_roles"),
+			h.ListPermissions,
+		)
 		perms.POST("",
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
 			h.CreatePermission,
