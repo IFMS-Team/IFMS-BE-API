@@ -40,6 +40,21 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	return r.queries.GetUserByUsername(ctx, username)
 }
 
+func (r *UserRepository) GetUserByID(ctx context.Context, userID pgtype.UUID) (db.User, error) {
+	return r.queries.GetUserByID(ctx, userID)
+}
+
+func (r *UserRepository) ListUsersWithRole(ctx context.Context, limit, offset int32) ([]db.ListUsersWithRoleRow, error) {
+	return r.queries.ListUsersWithRole(ctx, db.ListUsersWithRoleParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
+func (r *UserRepository) CountUsers(ctx context.Context) (int64, error) {
+	return r.queries.CountUsers(ctx)
+}
+
 func (r *UserRepository) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
 	hashedPass, err := utils.HashPassword(req.Password)
 	if err != nil {

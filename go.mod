@@ -2,7 +2,7 @@ module IFMS-BE-API
 
 go 1.26.1
 
-// replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
+replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
 
 require (
 	github.com/gin-gonic/gin v1.12.0
