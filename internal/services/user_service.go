@@ -99,6 +99,42 @@ func (s *UserService) GenerateToken(ctx context.Context, username, name string, 
 	return tokenString, nonce, nil
 }
 
+func (s *UserService) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
+	user, err := s.user.GetUserByUsername(ctx, username)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, errors.New("user.not_found")
+		}
+		return db.User{}, err
+	}
+	return user, nil
+}
+
+func (s *UserService) GetUserByID(ctx context.Context, userID pgtype.UUID) (db.User, error) {
+	user, err := s.user.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, errors.New("user.not_found")
+		}
+		return db.User{}, err
+	}
+	return user, nil
+}
+
+func (s *UserService) ListUsersWithRole(ctx context.Context, limit, offset int32) ([]db.ListUsersWithRoleRow, int64, error) {
+	users, err := s.user.ListUsersWithRole(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := s.user.CountUsers(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
+}
+
 func (s *UserService) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
 	_, err := s.user.GetUserByUsername(ctx, req.Username)
 	if err == nil {
