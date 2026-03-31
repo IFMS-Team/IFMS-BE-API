@@ -1,4 +1,4 @@
-name: Generate Swagger Docs
+name: Generate Swagger & Deploy Docs
 
 on:
   push:
@@ -7,12 +7,18 @@ on:
       - 'internal/handler/**'
       - 'internal/model/**'
       - 'cmd/api/main.go'
+      - 'docs/swagger-ui/**'
 
 jobs:
   swagger:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,20 +32,25 @@ jobs:
       - name: Generate swagger docs
         run: swag init -g cmd/api/main.go -o docs
 
-      - name: Check for changes
-        id: check
-        run: |
-          git add docs/
-          if git diff --staged --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit and push
-        if: steps.check.outputs.changed == 'true'
+      - name: Commit docs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "docs: auto-generate swagger [skip ci]"
-          git push
+          git add docs/
+          git diff --staged --quiet || (git commit -m "docs: auto-generate swagger [skip ci]" && git push)
+
+      - name: Prepare GitHub Pages
+        run: |
+          mkdir -p _site
+          cp docs/swagger.json _site/swagger.json
+          cp docs/swagger-ui/index.html _site/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
