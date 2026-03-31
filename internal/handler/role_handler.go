@@ -74,6 +74,16 @@ func NewRoleHandler(ctx *app.AppContext) {
 	}
 }
 
+// ListRoles godoc
+// @Summary      List roles
+// @Description  Get all roles (requires view_roles permission)
+// @Tags         Roles
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.APIResponse{data=[]response.RoleResponse}
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/roles [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
 	roles, err := h.roleService.ListRoles(c.Request.Context())
 	if err != nil {
@@ -92,6 +102,17 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 	})
 }
 
+// GetRoleWithPermissions godoc
+// @Summary      Get role with permissions
+// @Description  Get role details including assigned permissions
+// @Tags         Roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Role UUID"
+// @Success      200 {object} response.APIResponse{data=response.RoleWithPermissionsResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Router       /api/v1/roles/{id} [get]
 func (h *RoleHandler) GetRoleWithPermissions(c *gin.Context) {
 	roleID, err := response.StringToUUID(c.Param("id"))
 	if err != nil {
@@ -119,6 +140,19 @@ func (h *RoleHandler) GetRoleWithPermissions(c *gin.Context) {
 	})
 }
 
+// CreateRole godoc
+// @Summary      Create role
+// @Description  Create a new role (requires manage_roles permission)
+// @Tags         Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body request.CreateRoleRequest true "Role info"
+// @Success      201 {object} response.APIResponse{data=response.RoleResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      409 {object} response.ErrorResponse "Role already exists"
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/roles [post]
 func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req request.CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -154,6 +188,18 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	})
 }
 
+// DeleteRole godoc
+// @Summary      Delete role
+// @Description  Delete a role by ID (requires manage_roles permission)
+// @Tags         Roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Role UUID"
+// @Success      200 {object} response.MessageResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/roles/{id} [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
 	roleID, err := response.StringToUUID(c.Param("id"))
 	if err != nil {
@@ -186,6 +232,19 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 	})
 }
 
+// AssignPermission godoc
+// @Summary      Assign permission to role
+// @Description  Assign a permission to a specific role (requires manage_roles permission)
+// @Tags         Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Role UUID"
+// @Param        body body request.AssignPermissionRequest true "Permission to assign"
+// @Success      200 {object} response.MessageResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/roles/{id}/permissions [post]
 func (h *RoleHandler) AssignPermission(c *gin.Context) {
 	roleID, err := response.StringToUUID(c.Param("id"))
 	if err != nil {
@@ -230,6 +289,18 @@ func (h *RoleHandler) AssignPermission(c *gin.Context) {
 	})
 }
 
+// RemovePermission godoc
+// @Summary      Remove permission from role
+// @Description  Remove a specific permission from a role (requires manage_roles permission)
+// @Tags         Roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Role UUID"
+// @Param        permId path string true "Permission UUID"
+// @Success      200 {object} response.MessageResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/roles/{id}/permissions/{permId} [delete]
 func (h *RoleHandler) RemovePermission(c *gin.Context) {
 	roleID, err := response.StringToUUID(c.Param("id"))
 	if err != nil {
@@ -264,6 +335,16 @@ func (h *RoleHandler) RemovePermission(c *gin.Context) {
 	})
 }
 
+// ListPermissions godoc
+// @Summary      List permissions
+// @Description  Get all permissions (requires view_roles permission)
+// @Tags         Permissions
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.APIResponse{data=[]response.PermissionResponse}
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/permissions [get]
 func (h *RoleHandler) ListPermissions(c *gin.Context) {
 	perms, err := h.roleService.ListPermissions(c.Request.Context())
 	if err != nil {
@@ -282,6 +363,18 @@ func (h *RoleHandler) ListPermissions(c *gin.Context) {
 	})
 }
 
+// CreatePermission godoc
+// @Summary      Create permission
+// @Description  Create a new permission (requires manage_roles permission)
+// @Tags         Permissions
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body request.CreatePermissionRequest true "Permission info"
+// @Success      201 {object} response.APIResponse{data=response.PermissionResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/permissions [post]
 func (h *RoleHandler) CreatePermission(c *gin.Context) {
 	var req request.CreatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -310,6 +403,17 @@ func (h *RoleHandler) CreatePermission(c *gin.Context) {
 	})
 }
 
+// DeletePermission godoc
+// @Summary      Delete permission
+// @Description  Delete a permission by ID (requires manage_roles permission)
+// @Tags         Permissions
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Permission UUID"
+// @Success      200 {object} response.MessageResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/permissions/{id} [delete]
 func (h *RoleHandler) DeletePermission(c *gin.Context) {
 	permID, err := response.StringToUUID(c.Param("id"))
 	if err != nil {

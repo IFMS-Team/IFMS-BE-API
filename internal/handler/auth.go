@@ -62,6 +62,18 @@ func NewAuthHandler(ctx *app.AppContext) {
 	}
 }
 
+// Login godoc
+// @Summary      Login
+// @Description  Authenticate with username and password
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body body request.LoginRequest true "Login credentials"
+// @Success      200 {object} response.APIResponse{data=string} "JWT token"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req request.LoginRequest
 
@@ -99,6 +111,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
+// InsertUserInfo godoc
+// @Summary      Create user
+// @Description  Create a new user (requires create_user permission)
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body request.CreateUserRequest true "User info"
+// @Success      201 {object} response.APIResponse{data=response.UserInfoResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      409 {object} response.ErrorResponse "Username already exists"
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/users [post]
 func (h *AuthHandler) InsertUserInfo(c *gin.Context) {
 	var req request.CreateUserRequest
 
@@ -152,6 +177,18 @@ func (h *AuthHandler) InsertUserInfo(c *gin.Context) {
 	})
 }
 
+// ListUsers godoc
+// @Summary      List users
+// @Description  Get paginated list of users (admin/sub_admin only)
+// @Tags         Users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page query int false "Page number" default(1)
+// @Param        size query int false "Page size" default(10)
+// @Success      200 {object} response.PaginatedResponse{data=[]response.UserInfoResponse}
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/users [get]
 func (h *AuthHandler) ListUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
@@ -187,6 +224,17 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 	})
 }
 
+// GetMyProfile godoc
+// @Summary      Get my profile
+// @Description  Get the authenticated user's profile
+// @Tags         Users
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.APIResponse{data=response.UserInfoResponse}
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/users/me [get]
 func (h *AuthHandler) GetMyProfile(c *gin.Context) {
 	userID, exists := c.Get(middleware.ContextKeyUserID)
 	if !exists {
@@ -241,6 +289,18 @@ func (h *AuthHandler) GetMyProfile(c *gin.Context) {
 	})
 }
 
+// GetUserByUsername godoc
+// @Summary      Search user by username
+// @Description  Find a user by username (admin/sub_admin only)
+// @Tags         Users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        username query string true "Username to search"
+// @Success      200 {object} response.APIResponse{data=response.UserInfoResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/users/search [get]
 func (h *AuthHandler) GetUserByUsername(c *gin.Context) {
 	username := strings.ToLower(strings.TrimSpace(c.Query("username")))
 	if username == "" {
@@ -286,6 +346,18 @@ func (h *AuthHandler) GetUserByUsername(c *gin.Context) {
 	})
 }
 
+// GetUserByID godoc
+// @Summary      Get user by ID
+// @Description  Get user details by UUID (admin/sub_admin only)
+// @Tags         Users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "User UUID"
+// @Success      200 {object} response.APIResponse{data=response.UserInfoResponse}
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/users/{id} [get]
 func (h *AuthHandler) GetUserByID(c *gin.Context) {
 	id := c.Param("id")
 

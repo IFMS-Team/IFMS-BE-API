@@ -7,22 +7,22 @@ import (
 )
 
 type RoleResponse struct {
-	RoleID      string `json:"role_id"`
-	RoleName    string `json:"role_name"`
-	Description string `json:"description"`
+	RoleID      string `json:"role_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	RoleName    string `json:"role_name" example:"admin"`
+	Description string `json:"description" example:"Administrator role"`
 }
 
 type RoleWithPermissionsResponse struct {
-	RoleID      string               `json:"role_id"`
-	RoleName    string               `json:"role_name"`
-	Description string               `json:"description"`
+	RoleID      string               `json:"role_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	RoleName    string               `json:"role_name" example:"admin"`
+	Description string               `json:"description" example:"Administrator role"`
 	Permissions []PermissionResponse `json:"permissions"`
 }
 
 type PermissionResponse struct {
-	PermissionID   string `json:"permission_id"`
-	PermissionName string `json:"permission_name"`
-	Description    string `json:"description"`
+	PermissionID   string `json:"permission_id" example:"660e8400-e29b-41d4-a716-446655440000"`
+	PermissionName string `json:"permission_name" example:"create_user"`
+	Description    string `json:"description" example:"Allows creating new users"`
 }
 
 func ToRoleResponse(r db.Role) RoleResponse {
