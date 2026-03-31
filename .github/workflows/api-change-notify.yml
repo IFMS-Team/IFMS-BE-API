@@ -1,0 +1,78 @@
+name: API Change Notification
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'internal/handler/**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect API changes
+        id: detect
+        run: |
+          DIFF=$(git diff HEAD~1 HEAD -- 'internal/handler/*.go')
+
+          ADDED=$(echo "$DIFF" | grep '^+' | grep -v '^+++' | grep -E '\.(GET|POST|PUT|DELETE|PATCH)\s*\(' | sed 's/^+[[:space:]]*//' || true)
+          REMOVED=$(echo "$DIFF" | grep '^-' | grep -v '^---' | grep -E '\.(GET|POST|PUT|DELETE|PATCH)\s*\(' | sed 's/^-[[:space:]]*//' || true)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- 'internal/handler/*.go' | xargs -I{} basename {} | sort -u | tr '\n' ', ' | sed 's/,$//')
+
+          if [ -z "$ADDED" ] && [ -z "$REMOVED" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+          {
+            echo "added<<ENDOFADDED"
+            echo "$ADDED"
+            echo "ENDOFADDED"
+          } >> $GITHUB_OUTPUT
+
+          {
+            echo "removed<<ENDOFREMOVED"
+            echo "$REMOVED"
+            echo "ENDOFREMOVED"
+          } >> $GITHUB_OUTPUT
+
+          ADDED_COUNT=$(echo "$ADDED" | grep -c '.' || echo "0")
+          REMOVED_COUNT=$(echo "$REMOVED" | grep -c '.' || echo "0")
+          echo "added_count=$ADDED_COUNT" >> $GITHUB_OUTPUT
+          echo "removed_count=$REMOVED_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Notify Telegram
+        if: steps.detect.outputs.has_changes == 'true'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            🔄 **API Routes Changed\!**
+
+            📂 *Repo:* `${{ github.repository }}`
+            🌿 *Branch:* `${{ github.ref_name }}`
+            👤 *By:* `${{ github.actor }}`
+            📝 *Commit:* `${{ github.event.head_commit.message }}`
+            📁 *Files:* `${{ steps.detect.outputs.files }}`
+
+            🆕 *New routes (${{ steps.detect.outputs.added_count }}):*
+            ```
+            ${{ steps.detect.outputs.added }}
+            ```
+
+            🗑️ *Removed routes (${{ steps.detect.outputs.removed_count }}):*
+            ```
+            ${{ steps.detect.outputs.removed }}
+            ```
+
+            [Xem commit](${{ github.event.head_commit.url }})
+            [Swagger Docs](https://your-domain/swagger/index.html)

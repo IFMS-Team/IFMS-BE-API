@@ -11,15 +11,30 @@ import (
 	"IFMS-BE-API/internal/app"
 	"IFMS-BE-API/internal/handler"
 
+	_ "IFMS-BE-API/docs"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 
 	"github.com/vippergod12/IFMS-BE/database"
 	redisclient "github.com/vippergod12/IFMS-BE/redis"
 )
 
+// @title           IFMS API
+// @version         1.0
+// @description     IFMS Backend API Service
+
+// @host            localhost:8080
+// @BasePath        /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "Bearer {token}"
 func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
@@ -46,6 +61,8 @@ func main() {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 
