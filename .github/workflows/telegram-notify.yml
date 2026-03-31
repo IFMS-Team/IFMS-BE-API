@@ -14,8 +14,9 @@ jobs:
           message: |
             🚀 **Có Push mới trên GitHub!**
             
-            *Repository:* `${{ github.repository }}`
-            *Người thực hiện:* `${{ github.actor }}`
-            *Nội dung commit:* `${{ github.event.head_commit.message }}`
+            📂*Repository:* `${{ github.repository }}`
+            🌿*Branch:* `${{ github.ref_name }}`
+            👤*Người thực hiện:* `${{ github.actor }}`
+            📝*Nội dung commit:* `${{ github.event.head_commit.message }}`
             
             [Xem chi tiết commit tại đây](${{ github.event.head_commit.url }})
