@@ -75,4 +75,4 @@ jobs:
             ```
 
             [Xem commit](${{ github.event.head_commit.url }})
-            [Swagger Docs](https://your-domain/swagger/index.html)
+            [📖 Swagger Docs](https://vippergod12.github.io/IFMS-BE-API/)
