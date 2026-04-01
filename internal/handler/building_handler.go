@@ -51,6 +51,10 @@ func NewBuildingHandler(ctx *app.AppContext) {
 			middleware.RequirePermission(ctx.Queries, "create_building"),
 			h.CreateBuilding,
 		)
+		buildings.PUT("/:id",
+			middleware.RequirePermission(ctx.Queries, "create_building"),
+			h.UpdateBuilding,
+		)
 	}
 }
 
@@ -153,9 +157,70 @@ func (h *BuildingHandler) CreateBuilding(c *gin.Context) {
 		return
 	}
 
-		c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
 		"message": "Building created",
+		"data":    resp,
+	})
+}
+
+func (h *BuildingHandler) UpdateBuilding(c *gin.Context) {
+	buildingID, err := response.StringToUUID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid building ID format",
+		})
+		return
+	}
+
+	var req request.UpdateBuildingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid parameters",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	userIDAny, exists := c.Get(middleware.ContextKeyUserID)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "User not authenticated",
+		})
+		return
+	}
+	userID, ok := userIDAny.(pgtype.UUID)
+	if !ok || !userID.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "Invalid user ID",
+		})
+		return
+	}
+
+	resp, err := h.service.Update(c.Request.Context(), buildingID, req, userID)
+	if err != nil {
+		if err.Error() == "building not found" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  http.StatusNotFound,
+				"message": "Building not found",
+			})
+			return
+		}
+		h.logger.Error("Failed to update building", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to update building",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Building updated",
 		"data":    resp,
 	})
 }
@@ -194,4 +259,3 @@ func (h *BuildingHandler) GetBuilding(c *gin.Context) {
 		"data":    building,
 	})
 }
-

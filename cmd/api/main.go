@@ -62,6 +62,7 @@ func main() {
 
 	handler.NewAuthHandler(appCtx)
 	handler.NewRoleHandler(appCtx)
+	handler.NewBuildingHandler(appCtx)
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {

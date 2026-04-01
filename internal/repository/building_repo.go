@@ -39,3 +39,7 @@ func (r *BuildingRepository) ListBuildings(ctx context.Context, limit, offset in
 func (r *BuildingRepository) CountBuildings(ctx context.Context) (int64, error) {
 	return r.queries.CountBuildings(ctx)
 }
+
+func (r *BuildingRepository) UpdateBuilding(ctx context.Context, params db.UpdateBuildingParams) (db.Building, error) {
+	return r.queries.UpdateBuilding(ctx, params)
+}

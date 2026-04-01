@@ -86,6 +86,44 @@ func (s *BuildingService) List(ctx context.Context, limit, offset int32) ([]resp
 	return resp, total, nil
 }
 
+func (s *BuildingService) Update(ctx context.Context, buildingID pgtype.UUID, req request.UpdateBuildingRequest, userID pgtype.UUID) (response.BuildingResponse, error) {
+	_, err := s.repo.GetBuildingByID(ctx, buildingID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return response.BuildingResponse{}, errors.New("building not found")
+		}
+		return response.BuildingResponse{}, err
+	}
+
+	status := int32(1)
+	if req.BuildingStatus != nil {
+		status = *req.BuildingStatus
+	}
+	maxFloor := int32(0)
+	if req.MaximumFloor != nil {
+		maxFloor = *req.MaximumFloor
+	}
+
+	params := db.UpdateBuildingParams{
+		BuildingID:          buildingID,
+		BuildingName:        req.BuildingName,
+		BuildingAddress:     req.BuildingAddress,
+		BuildingDescription: req.BuildingDescription,
+		BuildingImage:       req.BuildingImage,
+		BuildingStatus:      status,
+		MaximumFloor:        maxFloor,
+		UpdatedBy:           userID,
+	}
+
+	building, err := s.repo.UpdateBuilding(ctx, params)
+	if err != nil {
+		s.logger.Error("Failed to update building", zap.Error(err))
+		return response.BuildingResponse{}, err
+	}
+
+	return s.mapToResponse(building), nil
+}
+
 func (s *BuildingService) mapToResponse(b db.Building) response.BuildingResponse {
 	return response.ToBuildingResponse(response.BuildingRow{
 		BuildingID:          b.BuildingID,

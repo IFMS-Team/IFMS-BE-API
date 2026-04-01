@@ -7,6 +7,7 @@ import (
 	"IFMS-BE-API/internal/app"
 	"IFMS-BE-API/internal/middleware"
 	"IFMS-BE-API/internal/model/request"
+	"IFMS-BE-API/internal/model/response"
 	"IFMS-BE-API/internal/repository"
 	"IFMS-BE-API/internal/services"
 
@@ -38,6 +39,7 @@ func NewFloorHandler(ctx *app.AppContext) {
 	floors.Use(middleware.RequireRole(ctx.Queries, "Admin", "Sub-admin"))
 	{
 		floors.POST("", h.CreateFloor)
+		floors.PUT("/:id", h.UpdateFloor)
 	}
 }
 
@@ -115,4 +117,65 @@ func (h *FloorHandler) CreateFloor(c *gin.Context) {
 
 	// Success
 	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *FloorHandler) UpdateFloor(c *gin.Context) {
+	floorID, err := response.StringToUUID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid floor ID format",
+		})
+		return
+	}
+
+	var req request.UpdateFloorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid parameters",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	userIDAny, exists := c.Get(middleware.ContextKeyUserID)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "User not authenticated",
+		})
+		return
+	}
+	userID, ok := userIDAny.(pgtype.UUID)
+	if !ok || !userID.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "Invalid user ID",
+		})
+		return
+	}
+
+	resp, err := h.service.Update(c.Request.Context(), floorID, req, userID)
+	if err != nil {
+		if err.Error() == "floor not found" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  http.StatusNotFound,
+				"message": "Floor not found",
+			})
+			return
+		}
+		h.logger.Error("Failed to update floor", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to update floor",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Floor updated",
+		"data":    resp,
+	})
 }

@@ -108,3 +108,40 @@ func (s *FloorService) Create(ctx context.Context, req request.CreateFloorReques
 
 	return response.ToFloorResponseFromDB(createdFloor), nil
 }
+
+func (s *FloorService) Update(ctx context.Context, floorID pgtype.UUID, req request.UpdateFloorRequest, userID pgtype.UUID) (response.FloorResponse, error) {
+	_, err := s.floorRepo.GetFloorByID(ctx, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return response.FloorResponse{}, errors.New("floor not found")
+		}
+		return response.FloorResponse{}, err
+	}
+
+	status := int32(1)
+	if req.Status != nil {
+		status = *req.Status
+	}
+	maxRoom := int32(0)
+	if req.MaximumRoom != nil {
+		maxRoom = *req.MaximumRoom
+	}
+
+	params := db.UpdateFloorParams{
+		FloorID:          floorID,
+		FloorName:        req.Name,
+		FloorDescription: req.Description,
+		FloorImage:       req.Image,
+		FloorStatus:      status,
+		MaximumRoom:      maxRoom,
+		UpdatedBy:        userID,
+	}
+
+	floor, err := s.floorRepo.UpdateFloor(ctx, params)
+	if err != nil {
+		s.logger.Error("Failed to update floor", zap.Error(err))
+		return response.FloorResponse{}, err
+	}
+
+	return response.ToFloorResponseFromDB(floor), nil
+}

@@ -28,6 +28,14 @@ func (r *FloorRepository) CountFloorsByBuildingID(ctx context.Context, buildingI
 	return r.queries.CountFloorsByBuildingID(ctx, buildingID)
 }
 
+func (r *FloorRepository) GetFloorByID(ctx context.Context, floorID pgtype.UUID) (db.Floor, error) {
+	return r.queries.GetFloorByID(ctx, floorID)
+}
+
+func (r *FloorRepository) UpdateFloor(ctx context.Context, params db.UpdateFloorParams) (db.Floor, error) {
+	return r.queries.UpdateFloor(ctx, params)
+}
+
 func (r *FloorRepository) CreateAuditLog(ctx context.Context, params db.CreateAuditLogParams) error {
 	_, err := r.queries.CreateAuditLog(ctx, params)
 	return err

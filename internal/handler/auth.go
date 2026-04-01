@@ -117,20 +117,34 @@ func (h *AuthHandler) InsertUserInfo(c *gin.Context) {
 
 	user, err := h.userService.InsertUserInfo(c.Request.Context(), req)
 	if err != nil {
-		h.logger.Error("Failed to insert user", zap.Error(err))
-
-		if err.Error() == "user.username_already_exists" {
+		switch err.Error() {
+		case "user.username_already_exists":
 			c.JSON(http.StatusConflict, gin.H{
 				"status":  http.StatusConflict,
 				"message": "Username already exists",
 			})
-			return
+		case "user.email_already_exists":
+			c.JSON(http.StatusConflict, gin.H{
+				"status":  http.StatusConflict,
+				"message": "Email already exists",
+			})
+		case "user.cccd_already_exists":
+			c.JSON(http.StatusConflict, gin.H{
+				"status":  http.StatusConflict,
+				"message": "CCCD already exists",
+			})
+		case "user.duplicate_value":
+			c.JSON(http.StatusConflict, gin.H{
+				"status":  http.StatusConflict,
+				"message": "Duplicate value",
+			})
+		default:
+			h.logger.Error("Failed to insert user", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Failed to create user",
+			})
 		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Failed to create user",
-		})
 		return
 	}
 
@@ -141,6 +155,7 @@ func (h *AuthHandler) InsertUserInfo(c *gin.Context) {
 			UserID:    user.UserID,
 			Username:  user.Username,
 			Email:     user.Email,
+			FullName:  user.FullName,
 			Status:    user.Status,
 			Phone:     user.Phone,
 			Address:   user.Address,
@@ -230,6 +245,7 @@ func (h *AuthHandler) GetMyProfile(c *gin.Context) {
 			UserID:    user.UserID,
 			Username:  user.Username,
 			Email:     user.Email,
+			FullName:  user.FullName,
 			Status:    user.Status,
 			Phone:     user.Phone,
 			Address:   user.Address,
@@ -275,6 +291,7 @@ func (h *AuthHandler) GetUserByUsername(c *gin.Context) {
 			UserID:    user.UserID,
 			Username:  user.Username,
 			Email:     user.Email,
+			FullName:  user.FullName,
 			Status:    user.Status,
 			Phone:     user.Phone,
 			Address:   user.Address,
@@ -322,6 +339,7 @@ func (h *AuthHandler) GetUserByID(c *gin.Context) {
 			UserID:    user.UserID,
 			Username:  user.Username,
 			Email:     user.Email,
+			FullName:  user.FullName,
 			Status:    user.Status,
 			Phone:     user.Phone,
 			Address:   user.Address,

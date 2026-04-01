@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/vippergod12/IFMS-BE/sql/generated"
@@ -136,16 +137,21 @@ func (s *UserService) ListUsersWithRole(ctx context.Context, limit, offset int32
 }
 
 func (s *UserService) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
-	_, err := s.user.GetUserByUsername(ctx, req.Username)
-	if err == nil {
-		return db.User{}, errors.New("user.username_already_exists")
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return db.User{}, err
-	}
-
 	user, err := s.user.InsertUserInfo(ctx, req)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			switch pgErr.ConstraintName {
+			case "users_username_key":
+				return db.User{}, errors.New("user.username_already_exists")
+			case "users_email_key":
+				return db.User{}, errors.New("user.email_already_exists")
+			case "users_cccd_key":
+				return db.User{}, errors.New("user.cccd_already_exists")
+			default:
+				return db.User{}, errors.New("user.duplicate_value")
+			}
+		}
 		s.logger.Error("Failed to insert user", zap.Error(err))
 		return db.User{}, err
 	}
