@@ -474,7 +474,7 @@ func (h *AuthHandler) ChangePasswordByAdmin(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body body request.ChangePasswordRequest true "Password change payload"
+// @Param        body body request.ChangePasswordByUserRequest true "Password change payload"
 // @Success      200 {object} response.APIResponse
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      401 {object} response.ErrorResponse

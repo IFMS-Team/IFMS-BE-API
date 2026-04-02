@@ -12,6 +12,37 @@ definitions:
     - permission_id
     - role_id
     type: object
+  request.ChangePasswordByAdminRequest:
+    properties:
+      confirm_password:
+        example: newpass456
+        type: string
+      new_password:
+        example: newpass456
+        minLength: 6
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    type: object
+  request.ChangePasswordByUserRequest:
+    properties:
+      confirm_password:
+        example: newpass456
+        type: string
+      new_password:
+        example: newpass456
+        minLength: 6
+        type: string
+      old_password:
+        example: oldpass123
+        minLength: 6
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - old_password
+    type: object
   request.CreatePermissionRequest:
     properties:
       description:
@@ -88,6 +119,26 @@ definitions:
     - role_id
     - username
     type: object
+  request.ForgotPasswordRequest:
+    properties:
+      cccd:
+        example: "012345678901"
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      phone:
+        example: "0912345678"
+        type: string
+      username:
+        example: john_doe
+        type: string
+    required:
+    - cccd
+    - email
+    - phone
+    - username
+    type: object
   request.LoginRequest:
     properties:
       password:
@@ -102,6 +153,62 @@ definitions:
     required:
     - password
     - username
+    type: object
+  request.ResetPasswordRequest:
+    properties:
+      confirm_password:
+        example: NewPass@123
+        type: string
+      new_password:
+        example: NewPass@123
+        maxLength: 64
+        minLength: 8
+        type: string
+      reset_token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - reset_token
+    type: object
+  request.UpdateUserRequest:
+    properties:
+      address:
+        example: 123 Main Street
+        type: string
+      cccd:
+        example: "012345678901"
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      full_name:
+        example: John Doe
+        type: string
+      phone:
+        example: "0912345678"
+        type: string
+      status:
+        example: 1
+        type: integer
+      username:
+        example: john_doe
+        maxLength: 255
+        minLength: 3
+        type: string
+    type: object
+  request.VerifyOTPRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      otp:
+        example: "123456"
+        type: string
+    required:
+    - email
+    - otp
     type: object
   response.APIResponse:
     properties:
@@ -238,6 +345,41 @@ info:
   title: IFMS API
   version: "1.0"
 paths:
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Verify user identity (username, email, phone, cccd) and send OTP
+        to email
+      parameters:
+      - description: Identity verification
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "429":
+          description: Max OTP attempts reached
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Forgot password - request OTP
+      tags:
+      - Auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -275,6 +417,75 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Login
+      tags:
+      - Auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using the reset token from OTP verification
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Reset password
+      tags:
+      - Auth
+  /api/v1/auth/verify-otp:
+    post:
+      consumes:
+      - application/json
+      description: Verify OTP code sent to email. Returns a reset token on success.
+      parameters:
+      - description: OTP verification
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset token
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Verify OTP
       tags:
       - Auth
   /api/v1/permissions:
@@ -699,6 +910,88 @@ paths:
       summary: Get user by ID
       tags:
       - Users
+    put:
+      consumes:
+      - application/json
+      description: Update user info by UUID (admin/sub_admin only). Username and CCCD
+        cannot be modified.
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.UserInfoResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /api/v1/users/{id}/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Change the user's password by admin (admin/sub_admin only)
+      parameters:
+      - description: Password change payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ChangePasswordByAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password by admin
+      tags:
+      - Users
   /api/v1/users/me:
     get:
       description: Get the authenticated user's profile
@@ -729,6 +1022,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Get my profile
+      tags:
+      - Users
+  /api/v1/users/me/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Change the authenticated user's password. Requires old password
+        verification.
+      parameters:
+      - description: Password change payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ChangePasswordByUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
       tags:
       - Users
   /api/v1/users/search:
