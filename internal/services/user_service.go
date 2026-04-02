@@ -6,12 +6,16 @@ import (
 	"IFMS-BE-API/internal/utils"
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	db "github.com/vippergod12/IFMS-BE/sql/generated"
 	"go.uber.org/zap"
 )
@@ -21,14 +25,16 @@ type UserService struct {
 	queries *db.Queries
 	logger  *zap.Logger
 	user    *repository.UserRepository
+	redis   *redis.Client
 }
 
-func NewUserService(pool *pgxpool.Pool, queries *db.Queries, logger *zap.Logger, user *repository.UserRepository) *UserService {
+func NewUserService(pool *pgxpool.Pool, queries *db.Queries, logger *zap.Logger, user *repository.UserRepository, rds *redis.Client) *UserService {
 	return &UserService{
 		pool:    pool,
 		queries: queries,
 		logger:  logger,
 		user:    repository.NewUserRepository(pool),
+		redis:   rds,
 	}
 }
 
@@ -207,6 +213,137 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, re
 	}
 
 	return user, nil
+}
+
+func (s *UserService) ForgotPassword(ctx context.Context, req request.ForgotPasswordRequest) error {
+	if s.redis == nil {
+		return errors.New("service.redis_unavailable")
+	}
+
+	user, err := s.user.GetUserByUsername(ctx, strings.ToLower(strings.TrimSpace(req.Username)))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user.identity_mismatch")
+		}
+		return err
+	}
+
+	if !strings.EqualFold(user.Email, req.Email) ||
+		user.Phone != req.Phone ||
+		user.Cccd != req.CCCD {
+		return errors.New("user.identity_mismatch")
+	}
+
+	attemptsKey := fmt.Sprintf("otp_attempts:%s", user.Email)
+	attempts, _ := s.redis.Get(ctx, attemptsKey).Int()
+	if attempts >= 3 {
+		return errors.New("otp.max_attempts_reached")
+	}
+
+	otp, err := utils.GenerateOTP()
+	if err != nil {
+		return err
+	}
+
+	otpKey := fmt.Sprintf("otp:%s", user.Email)
+	if err := s.redis.Set(ctx, otpKey, otp, 5*time.Minute).Err(); err != nil {
+		return err
+	}
+
+	if err := s.redis.Set(ctx, attemptsKey, 0, 5*time.Minute).Err(); err != nil {
+		return err
+	}
+
+	if err := utils.SendOTPEmail(user.Email, otp); err != nil {
+		s.logger.Error("Failed to send OTP email", zap.Error(err))
+		s.redis.Del(ctx, otpKey)
+		return errors.New("otp.send_failed")
+	}
+
+	return nil
+}
+
+func (s *UserService) VerifyOTP(ctx context.Context, req request.VerifyOTPRequest) (string, error) {
+	if s.redis == nil {
+		return "", errors.New("service.redis_unavailable")
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	attemptsKey := fmt.Sprintf("otp_attempts:%s", email)
+	attempts, _ := s.redis.Get(ctx, attemptsKey).Int()
+	if attempts >= 3 {
+		return "", errors.New("otp.max_attempts_reached")
+	}
+
+	otpKey := fmt.Sprintf("otp:%s", email)
+	storedOTP, err := s.redis.Get(ctx, otpKey).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", errors.New("otp.expired")
+		}
+		return "", err
+	}
+
+	if storedOTP != req.OTP {
+		s.redis.Incr(ctx, attemptsKey)
+		remaining := 3 - (attempts + 1)
+		return "", fmt.Errorf("otp.invalid:%d", remaining)
+	}
+
+	s.redis.Del(ctx, otpKey, attemptsKey)
+
+	resetToken := uuid.New().String()
+	resetKey := fmt.Sprintf("reset_token:%s", resetToken)
+	if err := s.redis.Set(ctx, resetKey, email, 10*time.Minute).Err(); err != nil {
+		return "", err
+	}
+
+	return resetToken, nil
+}
+
+func (s *UserService) ResetPassword(ctx context.Context, req request.ResetPasswordRequest) error {
+	if s.redis == nil {
+		return errors.New("service.redis_unavailable")
+	}
+
+	if valid, msg := utils.ValidatePasswordStrength(req.NewPassword); !valid {
+		return fmt.Errorf("password.weak:%s", msg)
+	}
+
+	resetKey := fmt.Sprintf("reset_token:%s", req.ResetToken)
+	email, err := s.redis.Get(ctx, resetKey).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return errors.New("reset.token_expired")
+		}
+		return err
+	}
+
+	user, err := s.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user.not_found")
+		}
+		return err
+	}
+
+	if utils.IsPasswordMatch(req.NewPassword, user.PasswordHash) {
+		return errors.New("auth.same_password")
+	}
+
+	newHash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := s.user.ChangePassword(ctx, user.UserID, req.NewPassword, newHash); err != nil {
+		return err
+	}
+
+	s.redis.Del(ctx, resetKey)
+
+	return nil
 }
 
 func (s *UserService) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
