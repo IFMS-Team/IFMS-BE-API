@@ -45,6 +45,11 @@ definitions:
     type: object
   request.CreatePermissionRequest:
     properties:
+      code:
+        example: create_user
+        maxLength: 100
+        minLength: 2
+        type: string
       description:
         example: Allows creating new users
         maxLength: 255
@@ -55,6 +60,7 @@ definitions:
         minLength: 2
         type: string
     required:
+    - code
     - permission_name
     type: object
   request.CreateRoleRequest:
@@ -319,6 +325,9 @@ definitions:
       email:
         example: john@example.com
         type: string
+      full_name:
+        example: John Doe
+        type: string
       phone:
         example: "0912345678"
         type: string
@@ -326,8 +335,8 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
       status:
-        example: 1
-        type: integer
+        example: Enable
+        type: string
       updated_at:
         example: "2024-01-01T00:00:00Z"
         type: string
