@@ -50,3 +50,21 @@ type ChangePasswordByAdminRequest struct {
 	NewPassword     string `json:"new_password" binding:"required,min=6" example:"newpass456"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword" example:"newpass456"`
 }
+
+type ForgotPasswordRequest struct {
+	Username string `json:"username" binding:"required" example:"john_doe"`
+	Email    string `json:"email" binding:"required,email" example:"john@example.com"`
+	Phone    string `json:"phone" binding:"required" example:"0912345678"`
+	CCCD     string `json:"cccd" binding:"required,len=12" example:"012345678901"`
+}
+
+type VerifyOTPRequest struct {
+	Email string `json:"email" binding:"required,email" example:"john@example.com"`
+	OTP   string `json:"otp" binding:"required,len=6,numeric" example:"123456"`
+}
+
+type ResetPasswordRequest struct {
+	ResetToken      string `json:"reset_token" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
+	NewPassword     string `json:"new_password" binding:"required,min=8,max=64" example:"NewPass@123"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword" example:"NewPass@123"`
+}

@@ -25,7 +25,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(ctx *app.AppContext) {
-	userService := services.NewUserService(ctx.Pool, ctx.Queries, ctx.Logger, nil)
+	userService := services.NewUserService(ctx.Pool, ctx.Queries, ctx.Logger, nil, ctx.Redis)
 
 	h := &AuthHandler{
 		queries:     ctx.Queries,
@@ -37,6 +37,9 @@ func NewAuthHandler(ctx *app.AppContext) {
 	auth := ctx.Engine.Group("/api/v1/auth")
 	{
 		auth.POST("/login", h.Login)
+		auth.POST("/forgot-password", h.ForgotPassword)
+		auth.POST("/verify-otp", h.VerifyOTP)
+		auth.POST("/reset-password", h.ResetPassword)
 	}
 
 	users := ctx.Engine.Group("/api/v1/users")
@@ -118,6 +121,192 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"status":  http.StatusOK,
 		"message": "Login successful",
 		"data":    token,
+	})
+}
+
+// ForgotPassword godoc
+// @Summary      Forgot password - request OTP
+// @Description  Verify user identity (username, email, phone, cccd) and send OTP to email
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body body request.ForgotPasswordRequest true "Identity verification"
+// @Success      200 {object} response.APIResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      429 {object} response.ErrorResponse "Max OTP attempts reached"
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req request.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid parameters",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	err := h.userService.ForgotPassword(c.Request.Context(), req)
+	if err != nil {
+		switch err.Error() {
+		case "user.identity_mismatch":
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "The provided information does not match any account",
+			})
+		case "otp.max_attempts_reached":
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"status":  http.StatusTooManyRequests,
+				"message": "Too many attempts. Please try again later",
+			})
+		case "otp.send_failed":
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Failed to send OTP. Please try again later",
+			})
+		case "service.redis_unavailable":
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":  http.StatusServiceUnavailable,
+				"message": "Service temporarily unavailable. Please try again later",
+			})
+		default:
+			h.logger.Error("Forgot password error", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Internal server error",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "OTP has been sent to your registered email",
+	})
+}
+
+// VerifyOTP godoc
+// @Summary      Verify OTP
+// @Description  Verify OTP code sent to email. Returns a reset token on success.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body body request.VerifyOTPRequest true "OTP verification"
+// @Success      200 {object} response.APIResponse{data=string} "Reset token"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      429 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/auth/verify-otp [post]
+func (h *AuthHandler) VerifyOTP(c *gin.Context) {
+	var req request.VerifyOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid parameters",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	resetToken, err := h.userService.VerifyOTP(c.Request.Context(), req)
+	if err != nil {
+		errMsg := err.Error()
+		switch {
+		case errMsg == "otp.expired":
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "OTP has expired. Please request a new one",
+			})
+		case errMsg == "otp.max_attempts_reached":
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"status":  http.StatusTooManyRequests,
+				"message": "Too many failed attempts. Please request a new OTP",
+			})
+		case strings.HasPrefix(errMsg, "otp.invalid:"):
+			remaining := strings.TrimPrefix(errMsg, "otp.invalid:")
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":    http.StatusBadRequest,
+				"message":   "Invalid OTP code",
+				"remaining": remaining,
+			})
+		default:
+			h.logger.Error("Verify OTP error", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Internal server error",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":      http.StatusOK,
+		"message":     "OTP verified successfully",
+		"reset_token": resetToken,
+	})
+}
+
+// ResetPassword godoc
+// @Summary      Reset password
+// @Description  Reset password using the reset token from OTP verification
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body body request.ResetPasswordRequest true "Reset password payload"
+// @Success      200 {object} response.APIResponse
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req request.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid parameters",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	err := h.userService.ResetPassword(c.Request.Context(), req)
+	if err != nil {
+		errMsg := err.Error()
+		switch {
+		case errMsg == "reset.token_expired":
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "Reset token has expired. Please start over",
+			})
+		case errMsg == "user.not_found":
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  http.StatusNotFound,
+				"message": "User not found",
+			})
+		case errMsg == "auth.same_password":
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "New password cannot be the same as the old password",
+			})
+		case strings.HasPrefix(errMsg, "password.weak:"):
+			msg := strings.TrimPrefix(errMsg, "password.weak:")
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": msg,
+			})
+		default:
+			h.logger.Error("Reset password error", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Failed to reset password",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Password has been successfully reset",
 	})
 }
 
