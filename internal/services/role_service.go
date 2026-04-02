@@ -101,6 +101,7 @@ func (s *RoleService) CreatePermission(ctx context.Context, req request.CreatePe
 	perm, err := s.role.CreatePermission(ctx, db.CreatePermissionParams{
 		PermissionName: req.PermissionName,
 		Description:    pgtype.Text{String: req.Description, Valid: req.Description != ""},
+		Code:           req.Code,
 	})
 	if err != nil {
 		s.logger.Error("Failed to create permission", zap.Error(err))

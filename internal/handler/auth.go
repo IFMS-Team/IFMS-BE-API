@@ -389,6 +389,7 @@ func (h *AuthHandler) UpdateUserInfo(c *gin.Context) {
 		"data": response.UserInfoResponse{
 			UserID:    user.UserID,
 			Username:  user.Username,
+			FullName:  user.FullName,
 			Email:     user.Email,
 			Status:    user.Status,
 			Phone:     user.Phone,
@@ -597,6 +598,7 @@ func (h *AuthHandler) InsertUserInfo(c *gin.Context) {
 		"data": response.UserInfoResponse{
 			UserID:    user.UserID,
 			Username:  user.Username,
+			FullName:  user.FullName,
 			Email:     user.Email,
 			Status:    user.Status,
 			Phone:     user.Phone,
@@ -709,6 +711,7 @@ func (h *AuthHandler) GetMyProfile(c *gin.Context) {
 		"data": response.UserInfoResponse{
 			UserID:    user.UserID,
 			Username:  user.Username,
+			FullName:  user.FullName,
 			Email:     user.Email,
 			Status:    user.Status,
 			Phone:     user.Phone,
@@ -766,6 +769,7 @@ func (h *AuthHandler) GetUserByUsername(c *gin.Context) {
 		"data": response.UserInfoResponse{
 			UserID:    user.UserID,
 			Username:  user.Username,
+			FullName:  user.FullName,
 			Email:     user.Email,
 			Status:    user.Status,
 			Phone:     user.Phone,
@@ -825,6 +829,7 @@ func (h *AuthHandler) GetUserByID(c *gin.Context) {
 		"data": response.UserInfoResponse{
 			UserID:    user.UserID,
 			Username:  user.Username,
+			FullName:  user.FullName,
 			Email:     user.Email,
 			Status:    user.Status,
 			Phone:     user.Phone,
