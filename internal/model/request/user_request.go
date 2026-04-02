@@ -27,6 +27,12 @@ type UpdateUserRequest struct {
 	FullName string `json:"full_name" binding:"omitempty" example:"John Doe"`
 }
 
+type ChangePasswordByUserRequest struct {
+	OldPassword     string `json:"old_password" binding:"required,min=6" example:"oldpass123"`
+	NewPassword     string `json:"new_password" binding:"required,min=6" example:"newpass456"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword" example:"newpass456"`
+}
+
 type LoginRequest struct {
 	Username string `json:"username" binding:"required,min=6,max=29" example:"admin01"`
 	Password string `json:"password" binding:"required,min=6" example:"password123"`
@@ -38,4 +44,9 @@ type CustomClaims struct {
 	UserID   pgtype.UUID `json:"user_id"`
 	Nonce    int64       `json:"nonce"`
 	jwt.RegisteredClaims
+}
+
+type ChangePasswordByAdminRequest struct {
+	NewPassword     string `json:"new_password" binding:"required,min=6" example:"newpass456"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword" example:"newpass456"`
 }

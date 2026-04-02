@@ -135,6 +135,80 @@ func (s *UserService) ListUsersWithRole(ctx context.Context, limit, offset int32
 	return users, total, nil
 }
 
+func (s *UserService) ChangePasswordByAdmin(ctx context.Context, userID pgtype.UUID, req request.ChangePasswordByAdminRequest) error {
+	user, err := s.user.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user.not_found")
+		}
+		return err
+	}
+
+	if utils.IsPasswordMatch(req.NewPassword, user.PasswordHash) {
+		return errors.New("auth.same_password")
+	}
+
+	newHash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.user.ChangePassword(ctx, userID, req.NewPassword, newHash)
+}
+
+func (s *UserService) ChangePasswordByUser(ctx context.Context, userID pgtype.UUID, req request.ChangePasswordByUserRequest) error {
+	user, err := s.user.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user.not_found")
+		}
+		return err
+	}
+
+	if !utils.IsPasswordMatch(req.OldPassword, user.PasswordHash) {
+		return errors.New("auth.old_password_incorrect")
+	}
+
+	if req.OldPassword == req.NewPassword {
+		return errors.New("auth.same_password")
+	}
+
+	newHash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.user.ChangePassword(ctx, userID, req.NewPassword, newHash)
+}
+
+func (s *UserService) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, req request.UpdateUserRequest) (db.User, error) {
+	existingUser, err := s.user.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, errors.New("user.not_found")
+		}
+		return db.User{}, err
+	}
+
+	if req.Email == "" {
+		req.Email = existingUser.Email
+	}
+	if req.Phone == "" {
+		req.Phone = existingUser.Phone
+	}
+	if req.Address == "" {
+		req.Address = existingUser.Address
+	}
+
+	user, err := s.user.UpdateUserInfo(ctx, userID, req, existingUser.Username)
+	if err != nil {
+		s.logger.Error("Failed to update user", zap.Error(err))
+		return db.User{}, err
+	}
+
+	return user, nil
+}
+
 func (s *UserService) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
 	_, err := s.user.GetUserByUsername(ctx, req.Username)
 	if err == nil {

@@ -55,6 +55,43 @@ func (r *UserRepository) CountUsers(ctx context.Context) (int64, error) {
 	return r.queries.CountUsers(ctx)
 }
 
+func (r *UserRepository) ChangePassword(ctx context.Context, userID pgtype.UUID, newPassword, newHash string) error {
+	return r.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		UserID:       userID,
+		Password:     newPassword,
+		PasswordHash: newHash,
+	})
+}
+
+func (r *UserRepository) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, req request.UpdateUserRequest, currentUsername string) (db.User, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return db.User{}, err
+	}
+	defer func(tx pgx.Tx) {
+		_ = tx.Rollback(ctx)
+	}(tx)
+
+	qtx := r.queries.WithTx(tx)
+
+	user, err := qtx.UpdateUser(ctx, db.UpdateUserParams{
+		UserID:   userID,
+		Username: currentUsername,
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Address:  req.Address,
+	})
+	if err != nil {
+		return db.User{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return db.User{}, err
+	}
+
+	return user, nil
+}
+
 func (r *UserRepository) InsertUserInfo(ctx context.Context, req request.CreateUserRequest) (db.User, error) {
 	hashedPass, err := utils.HashPassword(req.Password)
 	if err != nil {
