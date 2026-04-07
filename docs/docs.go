@@ -1308,9 +1308,16 @@ const docTemplate = `{
         "request.CreatePermissionRequest": {
             "type": "object",
             "required": [
+                "code",
                 "permission_name"
             ],
             "properties": {
+                "code": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2,
+                    "example": "create_user"
+                },
                 "description": {
                     "type": "string",
                     "maxLength": 255,
@@ -1681,6 +1688,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "john@example.com"
                 },
+                "full_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
                 "phone": {
                     "type": "string",
                     "example": "0912345678"
@@ -1690,8 +1701,8 @@ const docTemplate = `{
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
                 "status": {
-                    "type": "integer",
-                    "example": 1
+                    "type": "string",
+                    "example": "Enable"
                 },
                 "updated_at": {
                     "type": "string",

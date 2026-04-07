@@ -199,6 +199,9 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, re
 	if req.Email == "" {
 		req.Email = existingUser.Email
 	}
+	if req.FullName == "" {
+		req.FullName = existingUser.FullName
+	}
 	if req.Phone == "" {
 		req.Phone = existingUser.Phone
 	}
@@ -206,7 +209,7 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, re
 		req.Address = existingUser.Address
 	}
 
-	user, err := s.user.UpdateUserInfo(ctx, userID, req, existingUser.Username)
+	user, err := s.user.UpdateUserInfo(ctx, userID, req)
 	if err != nil {
 		s.logger.Error("Failed to update user", zap.Error(err))
 		return db.User{}, err

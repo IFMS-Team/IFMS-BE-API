@@ -18,4 +18,5 @@ type AssignPermissionRequest struct {
 type CreatePermissionRequest struct {
 	PermissionName string `json:"permission_name" binding:"required,min=2,max=100" example:"create_user"`
 	Description    string `json:"description" binding:"omitempty,max=255" example:"Allows creating new users"`
+	Code           string `json:"code" binding:"required,min=2,max=100" example:"create_user"`
 }
