@@ -3,7 +3,7 @@ package response
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/vippergod12/IFMS-BE/sql/generated"
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 )
 
 type RoleResponse struct {

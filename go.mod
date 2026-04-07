@@ -2,9 +2,8 @@ module IFMS-BE-API
 
 go 1.26.1
 
-// replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
-
 require (
+	github.com/IFMS-Team/IFMS-BE v1.0.5
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -15,7 +14,6 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
-	github.com/vippergod12/IFMS-BE v1.0.5
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.49.0
 )
@@ -72,4 +70,4 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/vippergod12/IFMS-BE => ../IFMS-BE
+replace github.com/IFMS-Team/IFMS-BE => ../IFMS-BE

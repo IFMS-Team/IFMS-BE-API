@@ -7,8 +7,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/vippergod12/IFMS-BE/database"
-	db "github.com/vippergod12/IFMS-BE/sql/generated"
+	"github.com/IFMS-Team/IFMS-BE/database"
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 )
 
 type AppContext struct {

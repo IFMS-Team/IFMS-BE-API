@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/vippergod12/IFMS-BE/sql/generated"
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"go.uber.org/zap"
 )
 

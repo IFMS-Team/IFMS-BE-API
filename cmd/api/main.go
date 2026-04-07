@@ -20,8 +20,8 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 
-	"github.com/vippergod12/IFMS-BE/database"
-	redisclient "github.com/vippergod12/IFMS-BE/redis"
+	"github.com/IFMS-Team/IFMS-BE/database"
+	redisclient "github.com/IFMS-Team/IFMS-BE/redis"
 )
 
 // @title           IFMS API
