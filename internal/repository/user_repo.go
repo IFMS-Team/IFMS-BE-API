@@ -63,7 +63,7 @@ func (r *UserRepository) ChangePassword(ctx context.Context, userID pgtype.UUID,
 	})
 }
 
-func (r *UserRepository) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, req request.UpdateUserRequest) (db.User, error) {
+func (r *UserRepository) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, req request.UpdateUserRequest, currentUsername string) (db.User, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return db.User{}, err
@@ -76,6 +76,7 @@ func (r *UserRepository) UpdateUserInfo(ctx context.Context, userID pgtype.UUID,
 
 	user, err := qtx.UpdateUser(ctx, db.UpdateUserParams{
 		UserID:   userID,
+		Username: currentUsername,
 		Email:    req.Email,
 		FullName: req.FullName,
 		Phone:    req.Phone,
