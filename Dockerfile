@@ -13,6 +13,9 @@ ARG GITHUB_TOKEN
 RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 COPY go.mod go.sum ./
+
+RUN sed -i '/^replace/d' go.mod && go mod tidy
+
 RUN go mod download
 
 COPY . .
