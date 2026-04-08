@@ -3,7 +3,7 @@ module IFMS-BE-API
 go 1.26.1
 
 require (
-	github.com/IFMS-Team/IFMS-BE v1.0.5
+	github.com/IFMS-Team/IFMS-BE v1.0.8
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/golang-jwt/jwt/v5 v5.3.1

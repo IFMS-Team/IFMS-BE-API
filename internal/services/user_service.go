@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"go.uber.org/zap"
 )
 
@@ -209,7 +209,7 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, userID pgtype.UUID, re
 		req.Address = existingUser.Address
 	}
 
-	user, err := s.user.UpdateUserInfo(ctx, userID, req)
+	user, err := s.user.UpdateUserInfo(ctx, userID, req, existingUser.Username)
 	if err != nil {
 		s.logger.Error("Failed to update user", zap.Error(err))
 		return db.User{}, err

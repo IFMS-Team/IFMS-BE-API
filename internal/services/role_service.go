@@ -7,9 +7,9 @@ import (
 	"context"
 	"errors"
 
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"go.uber.org/zap"
 )
 
