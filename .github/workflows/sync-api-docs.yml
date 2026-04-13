@@ -1,0 +1,155 @@
+name: Sync API Docs to Google Sheets
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'internal/handler/**'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse API routes from Swagger annotations
+        id: parse
+        run: |
+          CSV_FILE="api_routes.csv"
+          echo "No,Method,Path,Summary,Tag,File" > "$CSV_FILE"
+
+          counter=1
+          for file in internal/handler/*.go; do
+            filename=$(basename "$file")
+
+            # Extract blocks: @Summary, @Tags, @Router grouped together
+            grep -n '// @Summary\|// @Tags\|// @Router' "$file" | while IFS= read -r line; do
+              linenum=$(echo "$line" | cut -d: -f1)
+              content=$(echo "$line" | cut -d: -f2-)
+
+              if echo "$content" | grep -q '@Summary'; then
+                summary=$(echo "$content" | sed 's/.*@Summary[[:space:]]*//')
+                echo "SUMMARY:$linenum:$summary"
+              elif echo "$content" | grep -q '@Tags'; then
+                tag=$(echo "$content" | sed 's/.*@Tags[[:space:]]*//')
+                echo "TAG:$linenum:$tag"
+              elif echo "$content" | grep -q '@Router'; then
+                router=$(echo "$content" | sed 's/.*@Router[[:space:]]*//')
+                path=$(echo "$router" | awk '{print $1}')
+                method=$(echo "$router" | awk '{print toupper($2)}' | tr -d '[]')
+                echo "ROUTER:$linenum:$method:$path"
+              fi
+            done > "/tmp/parsed_${filename}.txt"
+
+            # Group them into API entries
+            current_summary=""
+            current_tag=""
+            while IFS= read -r line; do
+              type=$(echo "$line" | cut -d: -f1)
+              if [ "$type" = "SUMMARY" ]; then
+                current_summary=$(echo "$line" | cut -d: -f3-)
+              elif [ "$type" = "TAG" ]; then
+                current_tag=$(echo "$line" | cut -d: -f3-)
+              elif [ "$type" = "ROUTER" ]; then
+                method=$(echo "$line" | cut -d: -f3)
+                path=$(echo "$line" | cut -d: -f4-)
+                echo "$counter,$method,$path,\"$current_summary\",\"$current_tag\",$filename" >> "$CSV_FILE"
+                counter=$((counter + 1))
+              fi
+            done < "/tmp/parsed_${filename}.txt"
+          done
+
+          TOTAL=$(tail -n +2 "$CSV_FILE" | wc -l | tr -d ' ')
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "--- Parsed $TOTAL API routes ---"
+          cat "$CSV_FILE"
+
+      - name: Update Google Sheets
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Write to Google Sheets
+        run: |
+          pip install gspread google-auth --quiet
+
+          python3 << 'PYEOF'
+          import csv
+          import gspread
+          from google.oauth2.service_account import Credentials
+
+          SCOPES = [
+              "https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive",
+          ]
+          creds = Credentials.from_service_account_file(
+              "${{ steps.auth.outputs.credentials_file_path }}",
+              scopes=SCOPES,
+          )
+          gc = gspread.authorize(creds)
+          sh = gc.open_by_key("${{ secrets.GOOGLE_SHEETS_ID }}")
+
+          # Use first worksheet or create "API Routes"
+          try:
+              ws = sh.worksheet("API Routes")
+          except gspread.exceptions.WorksheetNotFound:
+              ws = sh.add_worksheet(title="API Routes", rows=200, cols=10)
+
+          ws.clear()
+
+          # Header row
+          header = ["No", "Method", "Path", "Summary", "Tag", "File"]
+          rows = [header]
+
+          with open("api_routes.csv", "r") as f:
+              reader = csv.reader(f)
+              next(reader)  # skip csv header
+              for row in reader:
+                  rows.append(row)
+
+          ws.update(range_name="A1", values=rows)
+
+          # Format header
+          ws.format("A1:F1", {
+              "backgroundColor": {"red": 0.2, "green": 0.4, "blue": 0.8},
+              "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
+              "horizontalAlignment": "CENTER",
+          })
+
+          # Color-code methods
+          for i, row in enumerate(rows[1:], start=2):
+              method = row[1] if len(row) > 1 else ""
+              color = {
+                  "GET":    {"red": 0.85, "green": 0.95, "blue": 0.85},
+                  "POST":   {"red": 0.85, "green": 0.85, "blue": 0.95},
+                  "PUT":    {"red": 1.0,  "green": 0.95, "blue": 0.8},
+                  "DELETE": {"red": 1.0,  "green": 0.85, "blue": 0.85},
+                  "PATCH":  {"red": 0.95, "green": 0.9,  "blue": 1.0},
+              }.get(method, {"red": 1, "green": 1, "blue": 1})
+              ws.format(f"A{i}:F{i}", {"backgroundColor": color})
+
+          # Auto-resize approximation: set column widths
+          ws.update_acell("H1", f"Total APIs: {len(rows) - 1}")
+          ws.update_acell("H2", f"Last updated by: GitHub Actions")
+
+          print(f"Updated {len(rows) - 1} API routes to Google Sheets")
+          PYEOF
+
+      - name: Notify Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            📋 **API Docs Updated\!**
+
+            📂 *Repo:* `${{ github.repository }}`
+            🌿 *Branch:* `${{ github.ref_name }}`
+            👤 *By:* `${{ github.actor }}`
+            📊 *Total APIs:* `${{ steps.parse.outputs.total }}`
+
+            [📄 Xem Google Sheet](https://docs.google.com/spreadsheets/d/${{ secrets.GOOGLE_SHEETS_ID }})
+            [Xem commit](${{ github.event.head_commit.url }})
