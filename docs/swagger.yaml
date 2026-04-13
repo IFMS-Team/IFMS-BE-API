@@ -178,6 +178,35 @@ definitions:
     - new_password
     - reset_token
     type: object
+  request.UpdatePermissionRequest:
+    properties:
+      code:
+        example: create_user
+        maxLength: 100
+        minLength: 2
+        type: string
+      description:
+        example: Updated description
+        maxLength: 255
+        type: string
+      permission_name:
+        example: create_user
+        maxLength: 100
+        minLength: 2
+        type: string
+    type: object
+  request.UpdateRoleRequest:
+    properties:
+      description:
+        example: Updated description
+        maxLength: 255
+        type: string
+      role_name:
+        example: manager
+        maxLength: 50
+        minLength: 2
+        type: string
+    type: object
   request.UpdateUserRequest:
     properties:
       address:
@@ -592,6 +621,51 @@ paths:
       summary: Delete permission
       tags:
       - Permissions
+    put:
+      consumes:
+      - application/json
+      description: Update an existing permission by ID (requires manage_roles permission)
+      parameters:
+      - description: Permission UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated permission info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PermissionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update permission
+      tags:
+      - Permissions
   /api/v1/roles:
     get:
       description: Get all roles (requires view_roles permission)
@@ -726,6 +800,51 @@ paths:
       security:
       - BearerAuth: []
       summary: Get role with permissions
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update an existing role by ID (requires manage_roles permission)
+      parameters:
+      - description: Role UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated role info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.RoleResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update role
       tags:
       - Roles
   /api/v1/roles/{id}/permissions:

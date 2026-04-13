@@ -64,6 +64,33 @@ func (s *RoleService) CreateRole(ctx context.Context, req request.CreateRoleRequ
 	return role, nil
 }
 
+func (s *RoleService) UpdateRole(ctx context.Context, roleID pgtype.UUID, req request.UpdateRoleRequest) (db.Role, error) {
+	existing, err := s.role.GetByID(ctx, roleID)
+	if err != nil {
+		return db.Role{}, errors.New("role.not_found")
+	}
+
+	roleName := existing.RoleName
+	if req.RoleName != "" {
+		roleName = req.RoleName
+	}
+	desc := existing.Description.String
+	if req.Description != "" {
+		desc = req.Description
+	}
+
+	role, err := s.role.Update(ctx, db.UpdateRoleParams{
+		RoleID:      roleID,
+		RoleName:    roleName,
+		Description: pgtype.Text{String: desc, Valid: desc != ""},
+	})
+	if err != nil {
+		s.logger.Error("Failed to update role", zap.Error(err))
+		return db.Role{}, err
+	}
+	return role, nil
+}
+
 func (s *RoleService) DeleteRole(ctx context.Context, roleID pgtype.UUID) error {
 	_, err := s.role.GetByID(ctx, roleID)
 	if err != nil {
@@ -105,6 +132,38 @@ func (s *RoleService) CreatePermission(ctx context.Context, req request.CreatePe
 	})
 	if err != nil {
 		s.logger.Error("Failed to create permission", zap.Error(err))
+		return db.Permission{}, err
+	}
+	return perm, nil
+}
+
+func (s *RoleService) UpdatePermission(ctx context.Context, permID pgtype.UUID, req request.UpdatePermissionRequest) (db.Permission, error) {
+	existing, err := s.role.GetPermissionByID(ctx, permID)
+	if err != nil {
+		return db.Permission{}, errors.New("permission.not_found")
+	}
+
+	permName := existing.PermissionName
+	if req.PermissionName != "" {
+		permName = req.PermissionName
+	}
+	desc := existing.Description.String
+	if req.Description != "" {
+		desc = req.Description
+	}
+	code := existing.Code
+	if req.Code != "" {
+		code = req.Code
+	}
+
+	perm, err := s.role.UpdatePermission(ctx, db.UpdatePermissionParams{
+		PermissionID:   permID,
+		PermissionName: permName,
+		Description:    pgtype.Text{String: desc, Valid: desc != ""},
+		Code:           code,
+	})
+	if err != nil {
+		s.logger.Error("Failed to update permission", zap.Error(err))
 		return db.Permission{}, err
 	}
 	return perm, nil
