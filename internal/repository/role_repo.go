@@ -36,10 +36,6 @@ func (r *RoleRepository) Create(ctx context.Context, params db.CreateRoleParams)
 	return r.queries.CreateRole(ctx, params)
 }
 
-func (r *RoleRepository) Update(ctx context.Context, params db.UpdateRoleParams) (db.Role, error) {
-	return r.queries.UpdateRole(ctx, params)
-}
-
 func (r *RoleRepository) Delete(ctx context.Context, roleID pgtype.UUID) error {
 	return r.queries.DeleteRole(ctx, roleID)
 }
@@ -66,10 +62,6 @@ func (r *RoleRepository) GetPermissionByID(ctx context.Context, permID pgtype.UU
 
 func (r *RoleRepository) CreatePermission(ctx context.Context, params db.CreatePermissionParams) (db.Permission, error) {
 	return r.queries.CreatePermission(ctx, params)
-}
-
-func (r *RoleRepository) UpdatePermission(ctx context.Context, params db.UpdatePermissionParams) (db.Permission, error) {
-	return r.queries.UpdatePermission(ctx, params)
 }
 
 func (r *RoleRepository) DeletePermission(ctx context.Context, permID pgtype.UUID) error {

@@ -42,10 +42,6 @@ func NewRoleHandler(ctx *app.AppContext) {
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
 			h.CreateRole,
 		)
-		roles.PUT("/:id",
-			middleware.RequirePermission(ctx.Queries, "manage_roles"),
-			h.UpdateRole,
-		)
 		roles.DELETE("/:id",
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
 			h.DeleteRole,
@@ -70,10 +66,6 @@ func NewRoleHandler(ctx *app.AppContext) {
 		perms.POST("",
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
 			h.CreatePermission,
-		)
-		perms.PUT("/:id",
-			middleware.RequirePermission(ctx.Queries, "manage_roles"),
-			h.UpdatePermission,
 		)
 		perms.DELETE("/:id",
 			middleware.RequirePermission(ctx.Queries, "manage_roles"),
@@ -192,64 +184,6 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
 		"message": "Role created",
-		"data":    response.ToRoleResponse(role),
-	})
-}
-
-// UpdateRole godoc
-// @Summary      Update role
-// @Description  Update an existing role by ID (requires manage_roles permission)
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "Role UUID"
-// @Param        body body request.UpdateRoleRequest true "Updated role info"
-// @Success      200 {object} response.APIResponse{data=response.RoleResponse}
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      404 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/roles/{id} [put]
-func (h *RoleHandler) UpdateRole(c *gin.Context) {
-	roleID, err := response.StringToUUID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": "Invalid role ID",
-		})
-		return
-	}
-
-	var req request.UpdateRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": "Invalid parameters",
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	role, err := h.roleService.UpdateRole(c.Request.Context(), roleID, req)
-	if err != nil {
-		if err.Error() == "role.not_found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  http.StatusNotFound,
-				"message": "Role not found",
-			})
-			return
-		}
-		h.logger.Error("Failed to update role", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Failed to update role",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "Role updated",
 		"data":    response.ToRoleResponse(role),
 	})
 }
@@ -465,64 +399,6 @@ func (h *RoleHandler) CreatePermission(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
 		"message": "Permission created",
-		"data":    response.ToPermissionResponse(perm),
-	})
-}
-
-// UpdatePermission godoc
-// @Summary      Update permission
-// @Description  Update an existing permission by ID (requires manage_roles permission)
-// @Tags         Permissions
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "Permission UUID"
-// @Param        body body request.UpdatePermissionRequest true "Updated permission info"
-// @Success      200 {object} response.APIResponse{data=response.PermissionResponse}
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      404 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/permissions/{id} [put]
-func (h *RoleHandler) UpdatePermission(c *gin.Context) {
-	permID, err := response.StringToUUID(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": "Invalid permission ID",
-		})
-		return
-	}
-
-	var req request.UpdatePermissionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": "Invalid parameters",
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	perm, err := h.roleService.UpdatePermission(c.Request.Context(), permID, req)
-	if err != nil {
-		if err.Error() == "permission.not_found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  http.StatusNotFound,
-				"message": "Permission not found",
-			})
-			return
-		}
-		h.logger.Error("Failed to update permission", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Failed to update permission",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "Permission updated",
 		"data":    response.ToPermissionResponse(perm),
 	})
 }
