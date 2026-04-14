@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	db "github.com/IFMS-Team/IFMS-BE/sql/generated"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -15,7 +16,7 @@ const (
 	ContextKeyRoleID   = "role_id"
 )
 
-func AuthMiddleware(keySecret []byte) gin.HandlerFunc {
+func AuthMiddleware(keySecret []byte, queries *db.Queries) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -49,6 +50,15 @@ func AuthMiddleware(keySecret []byte) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"status":  http.StatusUnauthorized,
 				"message": "Invalid or expired token",
+			})
+			return
+		}
+
+		_, err = queries.ValidateUserSession(c.Request.Context(), tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "Session expired or invalidated, please login again",
 			})
 			return
 		}

@@ -28,7 +28,7 @@ func NewRoleHandler(ctx *app.AppContext) {
 	}
 
 	roles := ctx.Engine.Group("/api/v1/roles")
-	roles.Use(middleware.AuthMiddleware(ctx.KeySecret))
+	roles.Use(middleware.AuthMiddleware(ctx.KeySecret, ctx.Queries))
 	{
 		roles.GET("",
 			middleware.RequirePermission(ctx.Queries, "view_roles"),
@@ -57,7 +57,7 @@ func NewRoleHandler(ctx *app.AppContext) {
 	}
 
 	perms := ctx.Engine.Group("/api/v1/permissions")
-	perms.Use(middleware.AuthMiddleware(ctx.KeySecret))
+	perms.Use(middleware.AuthMiddleware(ctx.KeySecret, ctx.Queries))
 	{
 		perms.GET("",
 			middleware.RequirePermission(ctx.Queries, "view_roles"),
