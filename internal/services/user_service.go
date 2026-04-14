@@ -105,6 +105,10 @@ func (s *UserService) GenerateToken(ctx context.Context, username, name string, 
 	return tokenString, nonce, nil
 }
 
+func (s *UserService) Logout(ctx context.Context, userID pgtype.UUID, token string) error {
+	return s.user.DeleteUserSession(ctx, userID, token)
+}
+
 func (s *UserService) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
 	user, err := s.user.GetUserByUsername(ctx, username)
 	if err != nil {

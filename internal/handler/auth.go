@@ -40,10 +40,11 @@ func NewAuthHandler(ctx *app.AppContext) {
 		auth.POST("/forgot-password", h.ForgotPassword)
 		auth.POST("/verify-otp", h.VerifyOTP)
 		auth.POST("/reset-password", h.ResetPassword)
+		auth.POST("/logout", middleware.AuthMiddleware(ctx.KeySecret, ctx.Queries), h.Logout)
 	}
 
 	users := ctx.Engine.Group("/api/v1/users")
-	users.Use(middleware.AuthMiddleware(ctx.KeySecret))
+	users.Use(middleware.AuthMiddleware(ctx.KeySecret, ctx.Queries))
 	{
 		users.GET("/me", h.GetMyProfile)
 		users.GET("",
@@ -121,6 +122,52 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"status":  http.StatusOK,
 		"message": "Login successful",
 		"data":    token,
+	})
+}
+
+// Logout godoc
+// @Summary      Logout
+// @Description  Invalidate the current session token (requires authentication)
+// @Tags         Auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.MessageResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /api/v1/auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID, exists := c.Get(middleware.ContextKeyUserID)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	uid, ok := userID.(pgtype.UUID)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "Invalid user ID",
+		})
+		return
+	}
+
+	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+
+	if err := h.userService.Logout(c.Request.Context(), uid, token); err != nil {
+		h.logger.Error("Failed to logout", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to logout",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Logged out successfully",
 	})
 }
 
