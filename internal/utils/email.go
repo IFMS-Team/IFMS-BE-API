@@ -30,7 +30,7 @@ func SendOTPEmail(toEmail, otp string) error {
 }
 
 func sendWithResend(apiKey, toEmail, otp string) error {
-	from := os.Getenv("SMTP_FROM")
+	from := os.Getenv("RESEND_FROM")
 	if from == "" {
 		from = "IFMS <onboarding@resend.dev>"
 	}
