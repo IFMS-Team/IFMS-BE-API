@@ -24,6 +24,13 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 	}
 }
 
+func (r *UserRepository) DeleteUserSession(ctx context.Context, userID pgtype.UUID, token string) error {
+	return r.queries.DeleteUserSession(ctx, db.DeleteUserSessionParams{
+		UserID: userID,
+		Token:  token,
+	})
+}
+
 func (r *UserRepository) DeleteUserSessionsByUserId(ctx context.Context, userid pgtype.UUID) error {
 	return r.queries.DeleteUserSessionsByUserId(ctx, userid)
 }
