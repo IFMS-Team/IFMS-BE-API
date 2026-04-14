@@ -1,15 +1,81 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"net/smtp"
 	"os"
 	"time"
 )
 
+type resendRequest struct {
+	From    string   `json:"from"`
+	To      []string `json:"to"`
+	Subject string   `json:"subject"`
+	Text    string   `json:"text"`
+}
+
 func SendOTPEmail(toEmail, otp string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	if apiKey != "" {
+		return sendWithResend(apiKey, toEmail, otp)
+	}
+	return sendWithSMTP(toEmail, otp)
+}
+
+func sendWithResend(apiKey, toEmail, otp string) error {
+	from := os.Getenv("SMTP_FROM")
+	if from == "" {
+		from = "IFMS <onboarding@resend.dev>"
+	}
+
+	body := fmt.Sprintf(
+		"Your OTP code for password reset is: %s\n\nThis code will expire in 5 minutes.\nIf you did not request this, please ignore this email.",
+		otp,
+	)
+
+	payload := resendRequest{
+		From:    from,
+		To:      []string{toEmail},
+		Subject: "IFMS - Password Reset OTP",
+		Text:    body,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("email marshal failed: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("email request failed: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("email send failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("resend error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+func sendWithSMTP(toEmail, otp string) error {
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
 	user := os.Getenv("SMTP_USER")
