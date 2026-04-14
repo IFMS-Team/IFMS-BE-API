@@ -3,73 +3,114 @@ package utils
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"time"
 )
 
-type resendRequest struct {
-	From    string   `json:"from"`
-	To      []string `json:"to"`
-	Subject string   `json:"subject"`
-	Text    string   `json:"text"`
-}
-
 func SendOTPEmail(toEmail, otp string) error {
-	apiKey := os.Getenv("RESEND_API_KEY")
-
-	if apiKey != "" {
-		return sendWithResend(apiKey, toEmail, otp)
+	if os.Getenv("GMAIL_CLIENT_ID") != "" {
+		return sendWithGmailAPI(toEmail, otp)
 	}
-	return sendWithSMTP(toEmail, otp)
+
+	if os.Getenv("SMTP_HOST") != "" {
+		return sendWithSMTP(toEmail, otp)
+	}
+
+	return fmt.Errorf("no email provider configured: set GMAIL_CLIENT_ID or SMTP_HOST")
 }
 
-func sendWithResend(apiKey, toEmail, otp string) error {
-	from := os.Getenv("RESEND_FROM")
-	if from == "" {
-		from = "IFMS <onboarding@resend.dev>"
+func getGmailAccessToken() (string, error) {
+	clientID := os.Getenv("GMAIL_CLIENT_ID")
+	clientSecret := os.Getenv("GMAIL_CLIENT_SECRET")
+	refreshToken := os.Getenv("GMAIL_REFRESH_TOKEN")
+
+	data := url.Values{
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"refresh_token": {refreshToken},
+		"grant_type":    {"refresh_token"},
 	}
 
+	resp, err := http.PostForm("https://oauth2.googleapis.com/token", data)
+	if err != nil {
+		return "", fmt.Errorf("gmail token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		AccessToken string `json:"access_token"`
+		Error       string `json:"error"`
+		ErrorDesc   string `json:"error_description"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("gmail token decode failed: %w", err)
+	}
+
+	if result.Error != "" {
+		return "", fmt.Errorf("gmail oauth error: %s - %s", result.Error, result.ErrorDesc)
+	}
+
+	return result.AccessToken, nil
+}
+
+func sendWithGmailAPI(toEmail, otp string) error {
+	accessToken, err := getGmailAccessToken()
+	if err != nil {
+		return err
+	}
+
+	from := os.Getenv("SMTP_FROM")
+	if from == "" {
+		from = os.Getenv("SMTP_USER")
+	}
+
+	subject := "IFMS - Password Reset OTP"
 	body := fmt.Sprintf(
 		"Your OTP code for password reset is: %s\n\nThis code will expire in 5 minutes.\nIf you did not request this, please ignore this email.",
 		otp,
 	)
 
-	payload := resendRequest{
-		From:    from,
-		To:      []string{toEmail},
-		Subject: "IFMS - Password Reset OTP",
-		Text:    body,
-	}
+	msg := fmt.Sprintf(
+		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s",
+		from, toEmail, subject, body,
+	)
 
-	jsonData, err := json.Marshal(payload)
+	encodedMsg := base64.URLEncoding.EncodeToString([]byte(msg))
+
+	payload, _ := json.Marshal(map[string]string{
+		"raw": encodedMsg,
+	})
+
+	req, err := http.NewRequest("POST",
+		"https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+		bytes.NewBuffer(payload),
+	)
 	if err != nil {
-		return fmt.Errorf("email marshal failed: %w", err)
+		return fmt.Errorf("gmail request failed: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("email request failed: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("email send failed: %w", err)
+		return fmt.Errorf("gmail send failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("resend error (%d): %s", resp.StatusCode, string(respBody))
+		return fmt.Errorf("gmail error (%d): %s", resp.StatusCode, string(respBody))
 	}
 
 	return nil
